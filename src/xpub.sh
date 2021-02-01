@@ -62,15 +62,15 @@ main () {
 
     shift $((OPTIND - 1))
 
-    [ "$(id -u)" -ne 0 ] && { echo 'Run it with sudo.'; exit 1; }
-
     ${tFlag} && xtty="${tArg}" || xtty="$(cat /sys/class/tty/tty0/active)"
 
     xuser="$(who | grep "${xtty}" | head -n 1 | cut -d' ' -f1)"
 
     [ -z "${xuser}" ] && { echo "No user found from ${xtty}." 1>&2; exit 1; }
 
-    xpids="$(ps -A | grep 'Xorg' | awk '{print $1}')"
+    [ "$(id -u "${xuser}")" -ne "$(id -u)" ] && [ "$(id -u)" -ne 0 ] && { echo 'Run it with sudo.'; exit 1; }
+
+    xpids="$(pgrep 'Xorg' )"
     vterm="vt$(printf '%s' "${xtty}" | sed -e 's/tty//g')"
 
     if [ -n "${xpids}" ]; then
@@ -98,6 +98,8 @@ main () {
 
     for pid in $(ps -u "${xuser}" -o pid=); do
         env="/proc/${pid}/environ"
+        if [ ! -r "${env}" ];then continue; fi
+
         display="$(cat "${env}" | tr '\0' '\n' | grep -E '^DISPLAY=' | cut -d= -f2)"
 
         if [ -z "${display}" ] || [ "${display}" != "${xdisplay}" ]; then
